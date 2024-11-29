@@ -22,14 +22,17 @@ func TestSubscribe(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
-			MsgCh:         make(chan string, 1),
 			Subscriptions: map[string][]protocol.Notifier{},
 		}
 		n, err := notifier.NewNotifier(protocol.SMS)
 		assert.Nil(t, err)
-		err = board.Subscribe(userId, []protocol.Notifier{n})
-		assert.Nil(t, err)
+		subscription := protocol.Subscription{
+			Subscriber: userId,
+			Services:   []protocol.Notifier{n},
+		}
+		err = board.Subscribe(subscription)
 		assert.Len(t, board.Subscriptions[userId], 1)
+		assert.Nil(t, err)
 	}
 
 	{
@@ -37,14 +40,17 @@ func TestSubscribe(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
-			MsgCh:         make(chan string, 1),
 			Subscriptions: map[string][]protocol.Notifier{},
 		}
 		sms, err := notifier.NewNotifier(protocol.SMS)
 		assert.Nil(t, err)
 		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
-		err = board.Subscribe(userId, []protocol.Notifier{sms, email})
+		subscription := protocol.Subscription{
+			Subscriber: userId,
+			Services:   []protocol.Notifier{sms, email},
+		}
+		err = board.Subscribe(subscription)
 		assert.Nil(t, err)
 		assert.Len(t, board.Subscriptions[userId], 2)
 	}
@@ -54,10 +60,13 @@ func TestSubscribe(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
-			MsgCh:         make(chan string, 1),
 			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		err := board.Subscribe(userId, nil)
+		subscription := protocol.Subscription{
+			Subscriber: userId,
+			Services:   nil,
+		}
+		err := board.Subscribe(subscription)
 		assert.Error(t, err)
 	}
 }
@@ -69,11 +78,21 @@ func TestMultipleSubscribe(t *testing.T) {
 		assert.Nil(t, err)
 		board := MessageBoard{
 			Id:            "",
-			MsgCh:         make(chan string, 1),
 			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		_ = board.Subscribe("1", []protocol.Notifier{email})
-		_ = board.Subscribe("2", []protocol.Notifier{email})
+		subscription1 := protocol.Subscription{
+			Subscriber: "1",
+			Services:   []protocol.Notifier{email},
+		}
+		err = board.Subscribe(subscription1)
+		assert.Nil(t, err)
+		subscription2 := protocol.Subscription{
+			Subscriber: "2",
+			Services:   []protocol.Notifier{email},
+		}
+		err = board.Subscribe(subscription2)
+		assert.Nil(t, err)
+
 		assert.Len(t, board.Subscriptions, 2)
 	}
 
@@ -83,11 +102,21 @@ func TestMultipleSubscribe(t *testing.T) {
 		assert.Nil(t, err)
 		board := MessageBoard{
 			Id:            "",
-			MsgCh:         make(chan string, 1),
 			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		_ = board.Subscribe("1", []protocol.Notifier{email})
-		_ = board.Subscribe("2", []protocol.Notifier{})
+		subscription1 := protocol.Subscription{
+			Subscriber: "1",
+			Services:   []protocol.Notifier{email},
+		}
+		err = board.Subscribe(subscription1)
+		assert.Nil(t, err)
+		subscription2 := protocol.Subscription{
+			Subscriber: "2",
+			Services:   []protocol.Notifier{},
+		}
+		err = board.Subscribe(subscription2)
+		assert.Error(t, err)
+
 		assert.Len(t, board.Subscriptions, 1)
 	}
 }
@@ -99,10 +128,15 @@ func TestUnsubscribe(t *testing.T) {
 		assert.Nil(t, err)
 		board := MessageBoard{
 			Id:            "",
-			MsgCh:         make(chan string, 1),
 			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		_ = board.Subscribe("1", []protocol.Notifier{email})
+		subscription := protocol.Subscription{
+			Subscriber: "1",
+			Services:   []protocol.Notifier{email},
+		}
+		err = board.Subscribe(subscription)
+		assert.Nil(t, err)
+
 		assert.Len(t, board.Subscriptions, 1)
 		board.Unsubscribe("1")
 		assert.Len(t, board.Subscriptions, 0)
