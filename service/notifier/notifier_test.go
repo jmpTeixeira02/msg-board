@@ -29,24 +29,3 @@ func TestNewNotifier(t *testing.T) {
 		assert.Error(t, err)
 	}
 }
-
-func TestSend(t *testing.T) {
-	{
-		t.Logf("Should send on email notifier")
-		notifier, _ := NewNotifier(protocol.Email)
-		err := notifier.Send("")
-		assert.Nil(t, err)
-	}
-	{
-		t.Logf("Should send on WhatsApp notifier")
-		notifier, _ := NewNotifier(protocol.WhatsApp)
-		err := notifier.Send("")
-		assert.Nil(t, err)
-	}
-	{
-		t.Logf("Should send on SMS notifier")
-		notifier, _ := NewNotifier(protocol.SMS)
-		err := notifier.Send("")
-		assert.Nil(t, err)
-	}
-}

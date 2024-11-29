@@ -1,19 +1,12 @@
 package board
 
 import (
-	"errors"
 	"msg-board/protocol"
 	"msg-board/service/notifier"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-type errorNotifier struct{}
-
-func (n *errorNotifier) Send(msg string) error {
-	return errors.New("err")
-}
 
 func TestNewBoard(t *testing.T) {
 	{
@@ -27,12 +20,14 @@ func TestSubscribe(t *testing.T) {
 	{
 		t.Log("Should subscribe one service")
 		userId := ""
-		board := NewBoard("")
-		sub := protocol.NewSubscription{
-			UserId:         userId,
-			NotifyServices: []protocol.NotifyService{protocol.SMS},
+		board := MessageBoard{
+			Id:            userId,
+			MsgCh:         make(chan string, 1),
+			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		err := board.Subscribe(sub)
+		n, err := notifier.NewNotifier(protocol.SMS)
+		assert.Nil(t, err)
+		err = board.Subscribe(userId, []protocol.Notifier{n})
 		assert.Nil(t, err)
 		assert.Len(t, board.Subscriptions[userId], 1)
 	}
@@ -40,37 +35,29 @@ func TestSubscribe(t *testing.T) {
 	{
 		t.Log("Should subscribe multiple services")
 		userId := ""
-		board := NewBoard("")
-		sub := protocol.NewSubscription{
-			UserId:         userId,
-			NotifyServices: []protocol.NotifyService{protocol.SMS, protocol.Email},
+		board := MessageBoard{
+			Id:            userId,
+			MsgCh:         make(chan string, 1),
+			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		err := board.Subscribe(sub)
+		sms, err := notifier.NewNotifier(protocol.SMS)
+		assert.Nil(t, err)
+		email, err := notifier.NewNotifier(protocol.Email)
+		assert.Nil(t, err)
+		err = board.Subscribe(userId, []protocol.Notifier{sms, email})
 		assert.Nil(t, err)
 		assert.Len(t, board.Subscriptions[userId], 2)
 	}
 
 	{
-		t.Log("Should error on subscribe with unimplemented notifier")
-		userId := ""
-		board := NewBoard("")
-		sub := protocol.NewSubscription{
-			UserId:         userId,
-			NotifyServices: []protocol.NotifyService{protocol.NotifyService("")},
-		}
-		err := board.Subscribe(sub)
-		assert.Error(t, err)
-	}
-
-	{
 		t.Log("Should error on subscribe without notifier")
 		userId := ""
-		board := NewBoard("")
-		sub := protocol.NewSubscription{
-			UserId:         userId,
-			NotifyServices: []protocol.NotifyService{},
+		board := MessageBoard{
+			Id:            userId,
+			MsgCh:         make(chan string, 1),
+			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		err := board.Subscribe(sub)
+		err := board.Subscribe(userId, nil)
 		assert.Error(t, err)
 	}
 }
@@ -78,37 +65,29 @@ func TestSubscribe(t *testing.T) {
 func TestMultipleSubscribe(t *testing.T) {
 	{
 		t.Log("Should add two subscriptions")
-		subs := []protocol.NewSubscription{
-			{
-				UserId:         "1",
-				NotifyServices: []protocol.NotifyService{protocol.Email},
-			}, {
-				UserId:         "2",
-				NotifyServices: []protocol.NotifyService{protocol.SMS},
-			},
+		email, err := notifier.NewNotifier(protocol.Email)
+		assert.Nil(t, err)
+		board := MessageBoard{
+			Id:            "",
+			MsgCh:         make(chan string, 1),
+			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		board := NewBoard("")
-		for i := range subs {
-			_ = board.Subscribe(subs[i])
-		}
+		_ = board.Subscribe("1", []protocol.Notifier{email})
+		_ = board.Subscribe("2", []protocol.Notifier{email})
 		assert.Len(t, board.Subscriptions, 2)
 	}
 
 	{
 		t.Log("Should only add successful subscriptions")
-		subs := []protocol.NewSubscription{
-			{
-				UserId:         "1",
-				NotifyServices: []protocol.NotifyService{protocol.Email},
-			}, {
-				UserId:         "2",
-				NotifyServices: []protocol.NotifyService{},
-			},
+		email, err := notifier.NewNotifier(protocol.Email)
+		assert.Nil(t, err)
+		board := MessageBoard{
+			Id:            "",
+			MsgCh:         make(chan string, 1),
+			Subscriptions: map[string][]protocol.Notifier{},
 		}
-		board := NewBoard("")
-		for i := range subs {
-			_ = board.Subscribe(subs[i])
-		}
+		_ = board.Subscribe("1", []protocol.Notifier{email})
+		_ = board.Subscribe("2", []protocol.Notifier{})
 		assert.Len(t, board.Subscriptions, 1)
 	}
 }
@@ -116,33 +95,16 @@ func TestMultipleSubscribe(t *testing.T) {
 func TestUnsubscribe(t *testing.T) {
 	{
 		t.Log("Should delete on unsubscribe")
-		board := NewBoard("")
-		_ = board.Subscribe(protocol.NewSubscription{
-			UserId:         "1",
-			NotifyServices: []protocol.NotifyService{protocol.Email},
-		})
+		email, err := notifier.NewNotifier(protocol.Email)
+		assert.Nil(t, err)
+		board := MessageBoard{
+			Id:            "",
+			MsgCh:         make(chan string, 1),
+			Subscriptions: map[string][]protocol.Notifier{},
+		}
+		_ = board.Subscribe("1", []protocol.Notifier{email})
 		assert.Len(t, board.Subscriptions, 1)
 		board.Unsubscribe("1")
 		assert.Len(t, board.Subscriptions, 0)
-	}
-}
-
-func TestSendMessage(t *testing.T) {
-	{
-		t.Log("Should message on notifiers")
-		notifiers := []protocol.Notifier{&notifier.EmailNotifier{}}
-		board := NewBoard("")
-		board.Subscriptions["1"] = notifiers
-		err := board.SendMessage("")
-		assert.Nil(t, err)
-	}
-
-	{
-		t.Log("Should error on unsuccessful notifiers")
-		notifiers := []protocol.Notifier{&errorNotifier{}}
-		board := NewBoard("")
-		board.Subscriptions["1"] = notifiers
-		err := board.SendMessage("")
-		assert.Error(t, err)
 	}
 }

@@ -2,37 +2,29 @@ package board
 
 import (
 	"errors"
+	"fmt"
 	"msg-board/protocol"
-	"msg-board/service/notifier"
 )
 
 type MessageBoard struct {
 	Id            string
 	MsgCh         chan string
-	Subscriptions map[string][]protocol.Notifier // userId -> NotifiyServices
+	Subscriptions map[string][]protocol.Notifier // userId -> map[Notifier] msgCh
 }
 
-func NewBoard(id string) MessageBoard {
-	return MessageBoard{
+func NewBoard(id string) protocol.Publisher {
+	return &MessageBoard{
 		Id:            id,
 		MsgCh:         make(chan string, 1),
 		Subscriptions: map[string][]protocol.Notifier{},
 	}
 }
 
-func (b *MessageBoard) Subscribe(sub protocol.NewSubscription) error {
-	if len(sub.NotifyServices) < 1 {
-		return errors.New("a subscription must have notifiers")
+func (b *MessageBoard) Subscribe(userId string, notifiers []protocol.Notifier) error {
+	if len(notifiers) < 1 {
+		return errors.New("subscription must have notifiers")
 	}
-	notifiers := make([]protocol.Notifier, len(sub.NotifyServices))
-	for i := range sub.NotifyServices {
-		notifier, err := notifier.NewNotifier(sub.NotifyServices[i])
-		if err != nil {
-			return err
-		}
-		notifiers[i] = notifier
-	}
-	b.Subscriptions[sub.UserId] = notifiers
+	b.Subscriptions[userId] = notifiers
 	return nil
 }
 
@@ -40,15 +32,10 @@ func (b *MessageBoard) Unsubscribe(user string) {
 	delete(b.Subscriptions, user)
 }
 
-func (b *MessageBoard) SendMessage(msg string) error {
-	var err error
-	for _, notifiers := range b.Subscriptions {
-		for _, notifier := range notifiers {
-			iErr := notifier.Send(msg)
-			if iErr != nil {
-				err = errors.Join(err, iErr)
-			}
+func (b *MessageBoard) NewMessage(msg string) {
+	for user, sub := range b.Subscriptions {
+		for _, n := range sub {
+			n.Send(fmt.Sprintf("User %s %s", user, msg))
 		}
 	}
-	return err
 }
