@@ -8,19 +8,19 @@ import (
 
 type MessageBoard struct {
 	Id            string
-	Msgs          []string
+	MsgCh         chan string
 	Subscriptions map[string][]protocol.Notifier // userId -> NotifiyServices
 }
 
 func NewBoard(id string) MessageBoard {
 	return MessageBoard{
 		Id:            id,
-		Msgs:          []string{},
+		MsgCh:         make(chan string, 1),
 		Subscriptions: map[string][]protocol.Notifier{},
 	}
 }
 
-func (b *MessageBoard) Subscribe(sub protocol.Subscription) error {
+func (b *MessageBoard) Subscribe(sub protocol.NewSubscription) error {
 	if len(sub.NotifyServices) < 1 {
 		return errors.New("a subscription must have notifiers")
 	}
