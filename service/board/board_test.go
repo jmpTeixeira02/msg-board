@@ -10,6 +10,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestIsPrivate(t *testing.T) {
+	t.Run("Should be public", func(t *testing.T) {
+		assert.False(t, isPrivate(""))
+		assert.False(t, isPrivate(" "))
+	})
+
+	t.Run("Should be private", func(t *testing.T) {
+		assert.True(t, isPrivate("a"))
+	})
+}
+
 func TestNewBoard(t *testing.T) {
 	t.Run("Should create new board", func(t *testing.T) {
 		res := NewBoard("", "")
@@ -18,11 +29,51 @@ func TestNewBoard(t *testing.T) {
 }
 
 func TestSubscribe(t *testing.T) {
-	t.Run("Should subscribe to one service", func(t *testing.T) {
+	t.Run("Should get error subscribing to private board with wrong password", func(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
 			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       true,
+			Password:      "a",
+		}
+		n, err := notifier.NewNotifier(protocol.SMS)
+		assert.Nil(t, err)
+		subscription := protocol.Subscription{
+			Subscriber: userId,
+			Services:   []protocol.Notifier{n},
+		}
+		err = board.Subscribe(subscription, "b")
+		assert.NotNil(t, err)
+		assert.Len(t, board.Subscriptions[userId], 0)
+	})
+
+	t.Run("Should subscribe to private board with one service", func(t *testing.T) {
+		userId := ""
+		board := MessageBoard{
+			Id:            userId,
+			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       true,
+			Password:      "a",
+		}
+		n, err := notifier.NewNotifier(protocol.SMS)
+		assert.Nil(t, err)
+		subscription := protocol.Subscription{
+			Subscriber: userId,
+			Services:   []protocol.Notifier{n},
+		}
+		err = board.Subscribe(subscription, "a")
+		assert.Len(t, board.Subscriptions[userId], 1)
+		assert.Nil(t, err)
+	})
+
+	t.Run("Should subscribe to public board with one service", func(t *testing.T) {
+		userId := ""
+		board := MessageBoard{
+			Id:            userId,
+			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       false,
+			Password:      "",
 		}
 		n, err := notifier.NewNotifier(protocol.SMS)
 		assert.Nil(t, err)
@@ -35,11 +86,13 @@ func TestSubscribe(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
-	t.Run("Should subscribe to multiple services", func(t *testing.T) {
+	t.Run("Should subscribe with multiple services", func(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
 			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       false,
+			Password:      "",
 		}
 		sms, err := notifier.NewNotifier(protocol.SMS)
 		assert.Nil(t, err)
@@ -76,6 +129,8 @@ func TestMultipleSubscribe(t *testing.T) {
 		board := MessageBoard{
 			Id:            "",
 			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       false,
+			Password:      "",
 		}
 		subscription1 := protocol.Subscription{
 			Subscriber: "1",
@@ -99,6 +154,8 @@ func TestMultipleSubscribe(t *testing.T) {
 		board := MessageBoard{
 			Id:            "",
 			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       false,
+			Password:      "",
 		}
 		subscription1 := protocol.Subscription{
 			Subscriber: "1",
@@ -124,6 +181,8 @@ func TestUnsubscribe(t *testing.T) {
 		board := MessageBoard{
 			Id:            "",
 			Subscriptions: map[string][]protocol.Notifier{},
+			Private:       false,
+			Password:      "",
 		}
 		subscription := protocol.Subscription{
 			Subscriber: "1",

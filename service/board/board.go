@@ -14,15 +14,15 @@ type MessageBoard struct {
 	Password      string
 }
 
+func isPrivate(pw string) bool {
+	return strings.TrimSpace(pw) != ""
+}
+
 func NewBoard(id string, pw string) protocol.Publisher {
-	private := false
-	if strings.TrimSpace(pw) != "" {
-		private = true
-	}
 	return &MessageBoard{
 		Id:            id,
 		Subscriptions: map[string][]protocol.Notifier{},
-		Private:       private,
+		Private:       isPrivate(pw),
 		Password:      pw,
 	}
 }
