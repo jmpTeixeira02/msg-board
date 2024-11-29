@@ -9,16 +9,14 @@ import (
 )
 
 func TestNewBoard(t *testing.T) {
-	{
-		t.Logf("Should create new board")
-		res := NewBoard("")
+	t.Run("Should create new board", func(t *testing.T) {
+		res := NewBoard("", "")
 		assert.NotNil(t, res)
-	}
+	})
 }
 
 func TestSubscribe(t *testing.T) {
-	{
-		t.Log("Should subscribe one service")
+	t.Run("Should subscribe to one service", func(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
@@ -30,13 +28,12 @@ func TestSubscribe(t *testing.T) {
 			Subscriber: userId,
 			Services:   []protocol.Notifier{n},
 		}
-		err = board.Subscribe(subscription)
+		err = board.Subscribe(subscription, "")
 		assert.Len(t, board.Subscriptions[userId], 1)
 		assert.Nil(t, err)
-	}
+	})
 
-	{
-		t.Log("Should subscribe multiple services")
+	t.Run("Should subscribe to multiple services", func(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
@@ -50,13 +47,12 @@ func TestSubscribe(t *testing.T) {
 			Subscriber: userId,
 			Services:   []protocol.Notifier{sms, email},
 		}
-		err = board.Subscribe(subscription)
+		err = board.Subscribe(subscription, "")
 		assert.Nil(t, err)
 		assert.Len(t, board.Subscriptions[userId], 2)
-	}
+	})
 
-	{
-		t.Log("Should error on subscribe without notifier")
+	t.Run("Should error on subscribe without notifier", func(t *testing.T) {
 		userId := ""
 		board := MessageBoard{
 			Id:            userId,
@@ -66,14 +62,13 @@ func TestSubscribe(t *testing.T) {
 			Subscriber: userId,
 			Services:   nil,
 		}
-		err := board.Subscribe(subscription)
+		err := board.Subscribe(subscription, "")
 		assert.Error(t, err)
-	}
+	})
 }
 
 func TestMultipleSubscribe(t *testing.T) {
-	{
-		t.Log("Should add two subscriptions")
+	t.Run("Should add two subscriptions", func(t *testing.T) {
 		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
 		board := MessageBoard{
@@ -84,20 +79,19 @@ func TestMultipleSubscribe(t *testing.T) {
 			Subscriber: "1",
 			Services:   []protocol.Notifier{email},
 		}
-		err = board.Subscribe(subscription1)
+		err = board.Subscribe(subscription1, "")
 		assert.Nil(t, err)
 		subscription2 := protocol.Subscription{
 			Subscriber: "2",
 			Services:   []protocol.Notifier{email},
 		}
-		err = board.Subscribe(subscription2)
+		err = board.Subscribe(subscription2, "")
 		assert.Nil(t, err)
 
 		assert.Len(t, board.Subscriptions, 2)
-	}
+	})
 
-	{
-		t.Log("Should only add successful subscriptions")
+	t.Run("Should only add sucessful subscriptions", func(t *testing.T) {
 		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
 		board := MessageBoard{
@@ -108,22 +102,21 @@ func TestMultipleSubscribe(t *testing.T) {
 			Subscriber: "1",
 			Services:   []protocol.Notifier{email},
 		}
-		err = board.Subscribe(subscription1)
+		err = board.Subscribe(subscription1, "")
 		assert.Nil(t, err)
 		subscription2 := protocol.Subscription{
 			Subscriber: "2",
 			Services:   []protocol.Notifier{},
 		}
-		err = board.Subscribe(subscription2)
+		err = board.Subscribe(subscription2, "")
 		assert.Error(t, err)
 
 		assert.Len(t, board.Subscriptions, 1)
-	}
+	})
 }
 
 func TestUnsubscribe(t *testing.T) {
-	{
-		t.Log("Should delete on unsubscribe")
+	t.Run("Should delete on unsubscribe", func(t *testing.T) {
 		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
 		board := MessageBoard{
@@ -134,11 +127,11 @@ func TestUnsubscribe(t *testing.T) {
 			Subscriber: "1",
 			Services:   []protocol.Notifier{email},
 		}
-		err = board.Subscribe(subscription)
+		err = board.Subscribe(subscription, "")
 		assert.Nil(t, err)
 
 		assert.Len(t, board.Subscriptions, 1)
 		board.Unsubscribe("1")
 		assert.Len(t, board.Subscriptions, 0)
-	}
+	})
 }
