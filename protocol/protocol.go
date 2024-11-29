@@ -1,7 +1,7 @@
 package protocol
 
 type Publisher interface {
-	Subscribe(subscription Subscription) error
+	Subscribe(subscription Subscription, pw string) error
 	Unsubscribe(subscriber string)
 	NewMessage(msg string)
 }

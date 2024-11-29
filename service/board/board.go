@@ -4,21 +4,33 @@ import (
 	"errors"
 	"fmt"
 	"msg-board/protocol"
+	"strings"
 )
 
 type MessageBoard struct {
 	Id            string
-	Subscriptions map[string][]protocol.Notifier // userId -> map[Notifier] msgCh
+	Subscriptions map[string][]protocol.Notifier // userId -> []notifiers
+	Private       bool
+	Password      string
 }
 
-func NewBoard(id string) protocol.Publisher {
+func NewBoard(id string, pw string) protocol.Publisher {
+	private := false
+	if strings.TrimSpace(pw) != "" {
+		private = true
+	}
 	return &MessageBoard{
 		Id:            id,
 		Subscriptions: map[string][]protocol.Notifier{},
+		Private:       private,
+		Password:      pw,
 	}
 }
 
-func (b *MessageBoard) Subscribe(subscription protocol.Subscription) error {
+func (b *MessageBoard) Subscribe(subscription protocol.Subscription, pw string) error {
+	if b.Private && pw != b.Password {
+		return errors.New("invalid password")
+	}
 	if len(subscription.Services) < 1 {
 		return errors.New("subscription must have notifiers")
 	}
