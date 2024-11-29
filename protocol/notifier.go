@@ -9,5 +9,5 @@ const (
 )
 
 type Notifier interface {
-	SendNotification(msg string)
+	Send(msg string) error
 }
