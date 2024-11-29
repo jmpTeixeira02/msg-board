@@ -1,8 +1,10 @@
 package board
 
 import (
+	"io"
 	"msg-board/protocol"
 	"msg-board/service/notifier"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,5 +135,55 @@ func TestUnsubscribe(t *testing.T) {
 		assert.Len(t, board.Subscriptions, 1)
 		board.Unsubscribe("1")
 		assert.Len(t, board.Subscriptions, 0)
+	})
+}
+
+func TestNewMessage(t *testing.T) {
+	t.Run("Should message one user with multiple notifiers", func(t *testing.T) {
+		email, err := notifier.NewNotifier(protocol.Email)
+		assert.Nil(t, err)
+		sms, err := notifier.NewNotifier(protocol.SMS)
+		assert.Nil(t, err)
+		board := NewBoard("", "")
+		subscription := protocol.Subscription{
+			Subscriber: "1",
+			Services:   []protocol.Notifier{email, sms},
+		}
+		err = board.Subscribe(subscription, "")
+		assert.Nil(t, err)
+
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		board.NewMessage("")
+		w.Close()
+
+		bytes, _ := io.ReadAll(r)
+		assert.Equal(t, "Email: User 1 \nSMS: User 1 \n", string(bytes))
+	})
+
+	t.Run("Should message two users", func(t *testing.T) {
+		email, err := notifier.NewNotifier(protocol.Email)
+		assert.Nil(t, err)
+		board := NewBoard("", "")
+		subscription1 := protocol.Subscription{
+			Subscriber: "1",
+			Services:   []protocol.Notifier{email},
+		}
+		subscription2 := protocol.Subscription{
+			Subscriber: "2",
+			Services:   []protocol.Notifier{email},
+		}
+		err = board.Subscribe(subscription1, "")
+		assert.Nil(t, err)
+		err = board.Subscribe(subscription2, "")
+		assert.Nil(t, err)
+
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		board.NewMessage("")
+		w.Close()
+
+		bytes, _ := io.ReadAll(r)
+		assert.Equal(t, "Email: User 1 \nEmail: User 2 \n", string(bytes))
 	})
 }
