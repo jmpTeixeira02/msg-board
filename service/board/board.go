@@ -45,7 +45,7 @@ func (b *MessageBoard) Unsubscribe(user string) {
 func (b *MessageBoard) NewMessage(msg string) {
 	for user, sub := range b.Subscriptions {
 		for _, n := range sub {
-			n.Send(fmt.Sprintf("User %s %s", user, msg))
+			n.Send(fmt.Sprintf("Board %s, User %s %s", b.Id, user, msg))
 		}
 	}
 }

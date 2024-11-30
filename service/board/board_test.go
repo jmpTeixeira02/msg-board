@@ -1,10 +1,9 @@
 package board
 
 import (
-	"io"
 	"msg-board/protocol"
 	"msg-board/service/notifier"
-	"os"
+	"msg-board/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -148,7 +147,7 @@ func TestMultipleSubscribe(t *testing.T) {
 		assert.Len(t, board.Subscriptions, 2)
 	})
 
-	t.Run("Should only add sucessful subscriptions", func(t *testing.T) {
+	t.Run("Should only add successful subscriptions", func(t *testing.T) {
 		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
 		board := MessageBoard{
@@ -203,7 +202,7 @@ func TestNewMessage(t *testing.T) {
 		assert.Nil(t, err)
 		sms, err := notifier.NewNotifier(protocol.SMS)
 		assert.Nil(t, err)
-		board := NewBoard("", "")
+		board := NewBoard("test", "")
 		subscription := protocol.Subscription{
 			Subscriber: "1",
 			Services:   []protocol.Notifier{email, sms},
@@ -211,19 +210,15 @@ func TestNewMessage(t *testing.T) {
 		err = board.Subscribe(subscription, "")
 		assert.Nil(t, err)
 
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		board.NewMessage("")
-		w.Close()
-
-		bytes, _ := io.ReadAll(r)
-		assert.Equal(t, "Email: User 1 \nSMS: User 1 \n", string(bytes))
+		msg := test.BoardGetMessage(board)
+		assert.Contains(t, msg, "Email: Board test, User 1")
+		assert.Contains(t, msg, "SMS: Board test, User 1")
 	})
 
 	t.Run("Should message two users", func(t *testing.T) {
 		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
-		board := NewBoard("", "")
+		board := NewBoard("test", "")
 		subscription1 := protocol.Subscription{
 			Subscriber: "1",
 			Services:   []protocol.Notifier{email},
@@ -237,12 +232,8 @@ func TestNewMessage(t *testing.T) {
 		err = board.Subscribe(subscription2, "")
 		assert.Nil(t, err)
 
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		board.NewMessage("")
-		w.Close()
-
-		bytes, _ := io.ReadAll(r)
-		assert.Equal(t, "Email: User 1 \nEmail: User 2 \n", string(bytes))
+		msg := test.BoardGetMessage(board)
+		assert.Contains(t, msg, "Email: Board test, User 1")
+		assert.Contains(t, msg, "Email: Board test, User 2")
 	})
 }

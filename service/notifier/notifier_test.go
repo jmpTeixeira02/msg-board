@@ -1,9 +1,8 @@
 package notifier
 
 import (
-	"io"
 	"msg-board/protocol"
-	"os"
+	"msg-board/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,36 +35,21 @@ func TestSend(t *testing.T) {
 	t.Run("Should send Email Notification", func(t *testing.T) {
 		notifier, _ := NewNotifier(protocol.Email)
 
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		notifier.Send("")
-		w.Close()
-
-		bytes, _ := io.ReadAll(r)
-		assert.Equal(t, "Email: \n", string(bytes))
+		msg := test.NotifierGetMessage(notifier)
+		assert.Contains(t, msg, "Email: test")
 	})
 
 	t.Run("Should send WhatsApp Notification", func(t *testing.T) {
 		notifier, _ := NewNotifier(protocol.WhatsApp)
 
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		notifier.Send("")
-		w.Close()
-
-		bytes, _ := io.ReadAll(r)
-		assert.Equal(t, "WhatsApp: \n", string(bytes))
+		msg := test.NotifierGetMessage(notifier)
+		assert.Contains(t, msg, "WhatsApp: test")
 	})
 
 	t.Run("Should send SMS Notification", func(t *testing.T) {
 		notifier, _ := NewNotifier(protocol.SMS)
 
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		notifier.Send("")
-		w.Close()
-
-		bytes, _ := io.ReadAll(r)
-		assert.Equal(t, "SMS: \n", string(bytes))
+		msg := test.NotifierGetMessage(notifier)
+		assert.Contains(t, msg, "SMS: test")
 	})
 }
