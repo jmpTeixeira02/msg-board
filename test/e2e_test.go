@@ -11,7 +11,7 @@ import (
 
 func TestE2E(t *testing.T) {
 	t.Run("Should stop getting notifications after unsubscribe", func(t *testing.T) {
-		repo, err := repository.NewRepository(protocol.MemoryMap)
+		repo, err := repository.NewRepository(protocol.MemRepo)
 		assert.Nil(t, err)
 		s, err := board.NewService(repo, protocol.WhatsApp)
 		assert.Nil(t, err)
@@ -41,7 +41,7 @@ func TestE2E(t *testing.T) {
 	})
 
 	t.Run("Should subscribe users to board and get notified on message", func(t *testing.T) {
-		repo, err := repository.NewRepository(protocol.MemoryMap)
+		repo, err := repository.NewRepository(protocol.MemRepo)
 		assert.Nil(t, err)
 		s, err := board.NewService(repo, protocol.WhatsApp, protocol.Email, protocol.SMS)
 		assert.Nil(t, err)
@@ -76,7 +76,7 @@ func TestE2E(t *testing.T) {
 	})
 
 	t.Run("Should subscribe user to multiple boards and get notified on respective board message", func(t *testing.T) {
-		repo, err := repository.NewRepository(protocol.MemoryMap)
+		repo, err := repository.NewRepository(protocol.MemRepo)
 		assert.Nil(t, err)
 		s, err := board.NewService(repo, protocol.WhatsApp, protocol.Email)
 		assert.Nil(t, err)

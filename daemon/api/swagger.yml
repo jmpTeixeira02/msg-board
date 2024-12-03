@@ -1,0 +1,82 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Minimal ping API server
+paths:
+  /board:
+    post:
+        description: Create board
+        responses:
+          '200':
+            description: Ok
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Board'
+  /board/{board}:
+    parameters:
+        - in: path
+          name: board
+          schema:
+            type: string
+          required: true
+    post:
+        description: Send message to board
+        responses:
+          '200':
+            description: Ok
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Message'
+  /subscription/{board}:
+    parameters:
+      - in: path
+        name: board
+        schema:
+          type: string
+        required: true
+    post:
+      description: Subscribe to board
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+    delete:
+      description: Unsubscribe to board
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+components:
+  schemas:
+    Subscription:
+      type: object
+      required:
+        - board
+        - user
+      properties:
+        board:
+          type: string
+        user:
+          type: string
+    Message:
+      type: object
+      required:
+        - msg
+      properties:
+        msg:
+          type: string
+    Board:
+      type: object
+      required:
+        - board
+      properties:
+        board:
+          type: string

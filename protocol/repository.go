@@ -3,7 +3,7 @@ package protocol
 type Repositories string
 
 const (
-	MemoryMap Repositories = "memMap"
+	MemRepo Repositories = "memMap"
 )
 
 type Repo interface {
