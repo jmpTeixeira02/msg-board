@@ -2,7 +2,7 @@ package protocol
 
 type Publisher interface {
 	Subscribe(subscription Subscription, pw string) error
-	Unsubscribe(subscriber string)
+	Unsubscribe(publisher string, subscriber string)
 	NewMessage(msg string)
 }
 
@@ -11,7 +11,12 @@ type Subscriber interface {
 	Unsubscribe(publisher string)
 }
 
+type Subscribing struct {
+	User     string
+	Services []NotifyService
+}
+
 type Subscription struct {
-	Subscriber string
-	Services   []Notifier
+	Subscriber Subscribing
+	Publisher  string
 }

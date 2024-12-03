@@ -2,50 +2,53 @@ package board
 
 import (
 	"errors"
-	"fmt"
 	"msg-board/protocol"
-	"strings"
+	"msg-board/service/notifier"
 )
 
-type MessageBoard struct {
-	Id            string
-	Subscriptions map[string][]protocol.Notifier // userId -> []notifiers
-	Private       bool
-	Password      string
+type BoardService struct {
+	repo      protocol.Repo
+	notifiers map[protocol.NotifyService]protocol.Notifier
 }
 
-func isPrivate(pw string) bool {
-	return strings.TrimSpace(pw) != ""
-}
-
-func NewBoard(id string, pw string) protocol.Publisher {
-	return &MessageBoard{
-		Id:            id,
-		Subscriptions: map[string][]protocol.Notifier{},
-		Private:       isPrivate(pw),
-		Password:      pw,
+func NewService(repo protocol.Repo, notifierServices ...protocol.NotifyService) (BoardService, error) {
+	notifierMap := make(map[protocol.NotifyService]protocol.Notifier)
+	for i := range notifierServices {
+		n, err := notifier.NewNotifier(notifierServices[i])
+		if err != nil {
+			return BoardService{}, err
+		}
+		notifierMap[notifierServices[i]] = n
 	}
+	return BoardService{
+		repo:      repo,
+		notifiers: notifierMap,
+	}, nil
 }
 
-func (b *MessageBoard) Subscribe(subscription protocol.Subscription, pw string) error {
-	if b.Private && pw != b.Password {
+func (s *BoardService) Subscribe(subscription protocol.Subscription, pw string) error {
+	isPrivate, boardPw, err := s.repo.IsPrivateBoard(subscription.Publisher)
+	if err != nil {
+		return err
+	}
+	if isPrivate && pw != boardPw {
 		return errors.New("invalid password")
 	}
-	if len(subscription.Services) < 1 {
+	if len(subscription.Subscriber.Services) < 1 {
 		return errors.New("subscription must have notifiers")
 	}
-	b.Subscriptions[subscription.Subscriber] = subscription.Services
-	return nil
+	return s.repo.Subscribe(subscription.Publisher, subscription.Subscriber)
 }
 
-func (b *MessageBoard) Unsubscribe(user string) {
-	delete(b.Subscriptions, user)
+func (s *BoardService) Unsubscribe(board string, user string) {
+	s.repo.Unsubscribe(board, user)
 }
 
-func (b *MessageBoard) NewMessage(msg string) {
-	for user, sub := range b.Subscriptions {
-		for _, n := range sub {
-			n.Send(fmt.Sprintf("Board %s, User %s %s", b.Id, user, msg))
+func (s *BoardService) NewMessage(board string, msg string) {
+	subs := s.repo.GetSubscribers(board)
+	for i := range subs {
+		for j := range subs[i].Services {
+			s.notifiers[subs[i].Services[j]].Send(subs[i].User, board)
 		}
 	}
 }

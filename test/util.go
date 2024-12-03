@@ -6,20 +6,21 @@ import (
 	"os"
 )
 
-func BoardGetMessage(board protocol.Publisher) string {
+func SendMessageAux(sendMessage func()) string {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	board.NewMessage("test")
-	w.Close()
 
+	sendMessage()
+	w.Close()
 	bytes, _ := io.ReadAll(r)
+
 	return string(bytes)
 }
 
-func NotifierGetMessage(notifier protocol.Notifier) string {
+func NotifierGetMessage(user string, notifier protocol.Notifier) string {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	notifier.Send("test")
+	notifier.Send(user, "test")
 	w.Close()
 
 	bytes, _ := io.ReadAll(r)

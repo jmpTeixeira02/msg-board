@@ -32,24 +32,25 @@ func TestNewNotifier(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
+	user := "User"
 	t.Run("Should send Email Notification", func(t *testing.T) {
 		notifier, _ := NewNotifier(protocol.Email)
 
-		msg := test.NotifierGetMessage(notifier)
-		assert.Contains(t, msg, "Email: test")
+		msg := test.NotifierGetMessage(user, notifier)
+		assert.Contains(t, msg, "User: User Email: test")
 	})
 
 	t.Run("Should send WhatsApp Notification", func(t *testing.T) {
 		notifier, _ := NewNotifier(protocol.WhatsApp)
 
-		msg := test.NotifierGetMessage(notifier)
-		assert.Contains(t, msg, "WhatsApp: test")
+		msg := test.NotifierGetMessage(user, notifier)
+		assert.Contains(t, msg, "User: User WhatsApp: test")
 	})
 
 	t.Run("Should send SMS Notification", func(t *testing.T) {
 		notifier, _ := NewNotifier(protocol.SMS)
 
-		msg := test.NotifierGetMessage(notifier)
-		assert.Contains(t, msg, "SMS: test")
+		msg := test.NotifierGetMessage(user, notifier)
+		assert.Contains(t, msg, "User: User SMS: test")
 	})
 }

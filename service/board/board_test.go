@@ -2,238 +2,177 @@ package board
 
 import (
 	"msg-board/protocol"
-	"msg-board/service/notifier"
+	"msg-board/repository/memory"
 	"msg-board/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsPrivate(t *testing.T) {
-	t.Run("Should be public", func(t *testing.T) {
-		assert.False(t, isPrivate(""))
-		assert.False(t, isPrivate(" "))
-	})
-
-	t.Run("Should be private", func(t *testing.T) {
-		assert.True(t, isPrivate("a"))
-	})
-}
-
-func TestNewBoard(t *testing.T) {
-	t.Run("Should create new board", func(t *testing.T) {
-		res := NewBoard("", "")
-		assert.NotNil(t, res)
+func TestNewService(t *testing.T) {
+	t.Run("Should create new service", func(t *testing.T) {
+		s, err := NewService(memory.NewBd(), protocol.Email)
+		assert.NotNil(t, s)
+		assert.Nil(t, err)
 	})
 }
 
 func TestSubscribe(t *testing.T) {
-	t.Run("Should get error subscribing to private board with wrong password", func(t *testing.T) {
-		userId := ""
-		board := MessageBoard{
-			Id:            userId,
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       true,
-			Password:      "a",
-		}
-		n, err := notifier.NewNotifier(protocol.SMS)
-		assert.Nil(t, err)
-		subscription := protocol.Subscription{
-			Subscriber: userId,
-			Services:   []protocol.Notifier{n},
-		}
-		err = board.Subscribe(subscription, "b")
-		assert.NotNil(t, err)
-		assert.Len(t, board.Subscriptions[userId], 0)
-	})
-
-	t.Run("Should subscribe to private board with one service", func(t *testing.T) {
-		userId := ""
-		board := MessageBoard{
-			Id:            userId,
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       true,
-			Password:      "a",
-		}
-		n, err := notifier.NewNotifier(protocol.SMS)
-		assert.Nil(t, err)
-		subscription := protocol.Subscription{
-			Subscriber: userId,
-			Services:   []protocol.Notifier{n},
-		}
-		err = board.Subscribe(subscription, "a")
-		assert.Len(t, board.Subscriptions[userId], 1)
-		assert.Nil(t, err)
-	})
-
-	t.Run("Should subscribe to public board with one service", func(t *testing.T) {
-		userId := ""
-		board := MessageBoard{
-			Id:            userId,
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       false,
-			Password:      "",
-		}
-		n, err := notifier.NewNotifier(protocol.SMS)
-		assert.Nil(t, err)
-		subscription := protocol.Subscription{
-			Subscriber: userId,
-			Services:   []protocol.Notifier{n},
-		}
-		err = board.Subscribe(subscription, "")
-		assert.Len(t, board.Subscriptions[userId], 1)
-		assert.Nil(t, err)
-	})
-
-	t.Run("Should subscribe with multiple services", func(t *testing.T) {
-		userId := ""
-		board := MessageBoard{
-			Id:            userId,
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       false,
-			Password:      "",
-		}
-		sms, err := notifier.NewNotifier(protocol.SMS)
-		assert.Nil(t, err)
-		email, err := notifier.NewNotifier(protocol.Email)
-		assert.Nil(t, err)
-		subscription := protocol.Subscription{
-			Subscriber: userId,
-			Services:   []protocol.Notifier{sms, email},
-		}
-		err = board.Subscribe(subscription, "")
-		assert.Nil(t, err)
-		assert.Len(t, board.Subscriptions[userId], 2)
-	})
-
 	t.Run("Should error on subscribe without notifier", func(t *testing.T) {
 		userId := ""
-		board := MessageBoard{
-			Id:            userId,
-			Subscriptions: map[string][]protocol.Notifier{},
-		}
+		board := ""
+
+		s, err := NewService(memory.NewBd(), protocol.Email)
+		assert.NotNil(t, s)
+		assert.Nil(t, err)
+
+		s.repo.AddPublicBoard(board)
+
+		assert.Nil(t, err)
+
 		subscription := protocol.Subscription{
-			Subscriber: userId,
-			Services:   nil,
+			Subscriber: protocol.Subscribing{
+				User:     userId,
+				Services: []protocol.NotifyService{},
+			},
+			Publisher: board,
 		}
-		err := board.Subscribe(subscription, "")
+
+		err = s.Subscribe(subscription, "")
 		assert.Error(t, err)
 	})
-}
 
-func TestMultipleSubscribe(t *testing.T) {
-	t.Run("Should add two subscriptions", func(t *testing.T) {
-		email, err := notifier.NewNotifier(protocol.Email)
-		assert.Nil(t, err)
-		board := MessageBoard{
-			Id:            "",
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       false,
-			Password:      "",
-		}
-		subscription1 := protocol.Subscription{
-			Subscriber: "1",
-			Services:   []protocol.Notifier{email},
-		}
-		err = board.Subscribe(subscription1, "")
-		assert.Nil(t, err)
-		subscription2 := protocol.Subscription{
-			Subscriber: "2",
-			Services:   []protocol.Notifier{email},
-		}
-		err = board.Subscribe(subscription2, "")
+	t.Run("Should get error subscribing to private board with wrong password", func(t *testing.T) {
+		userId := ""
+		board := ""
+
+		s, err := NewService(memory.NewBd(), protocol.Email)
+		assert.NotNil(t, s)
 		assert.Nil(t, err)
 
-		assert.Len(t, board.Subscriptions, 2)
-	})
+		s.repo.AddPrivateBoard(board, "a")
 
-	t.Run("Should only add successful subscriptions", func(t *testing.T) {
-		email, err := notifier.NewNotifier(protocol.Email)
 		assert.Nil(t, err)
-		board := MessageBoard{
-			Id:            "",
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       false,
-			Password:      "",
-		}
-		subscription1 := protocol.Subscription{
-			Subscriber: "1",
-			Services:   []protocol.Notifier{email},
-		}
-		err = board.Subscribe(subscription1, "")
-		assert.Nil(t, err)
-		subscription2 := protocol.Subscription{
-			Subscriber: "2",
-			Services:   []protocol.Notifier{},
-		}
-		err = board.Subscribe(subscription2, "")
-		assert.Error(t, err)
 
-		assert.Len(t, board.Subscriptions, 1)
-	})
-}
-
-func TestUnsubscribe(t *testing.T) {
-	t.Run("Should delete on unsubscribe", func(t *testing.T) {
-		email, err := notifier.NewNotifier(protocol.Email)
-		assert.Nil(t, err)
-		board := MessageBoard{
-			Id:            "",
-			Subscriptions: map[string][]protocol.Notifier{},
-			Private:       false,
-			Password:      "",
-		}
 		subscription := protocol.Subscription{
-			Subscriber: "1",
-			Services:   []protocol.Notifier{email},
+			Subscriber: protocol.Subscribing{
+				User:     userId,
+				Services: []protocol.NotifyService{protocol.Email},
+			},
+			Publisher: board,
 		}
-		err = board.Subscribe(subscription, "")
+
+		err = s.Subscribe(subscription, "b")
+		assert.NotNil(t, err)
+	})
+
+	t.Run("Should subscribe to private board", func(t *testing.T) {
+		userId := ""
+		board := ""
+
+		s, err := NewService(memory.NewBd(), protocol.Email)
+		assert.NotNil(t, s)
 		assert.Nil(t, err)
 
-		assert.Len(t, board.Subscriptions, 1)
-		board.Unsubscribe("1")
-		assert.Len(t, board.Subscriptions, 0)
+		s.repo.AddPrivateBoard(board, "b")
+
+		assert.Nil(t, err)
+
+		subscription := protocol.Subscription{
+			Subscriber: protocol.Subscribing{
+				User:     userId,
+				Services: []protocol.NotifyService{protocol.Email},
+			},
+			Publisher: board,
+		}
+
+		err = s.Subscribe(subscription, "b")
+		assert.Nil(t, err)
+	})
+
+	t.Run("Should subscribe to public board", func(t *testing.T) {
+		userId := ""
+		board := ""
+
+		s, err := NewService(memory.NewBd(), protocol.Email)
+		assert.NotNil(t, s)
+		assert.Nil(t, err)
+
+		s.repo.AddPublicBoard(board)
+
+		assert.Nil(t, err)
+
+		subscription := protocol.Subscription{
+			Subscriber: protocol.Subscribing{
+				User:     userId,
+				Services: []protocol.NotifyService{protocol.Email},
+			},
+			Publisher: board,
+		}
+
+		err = s.Subscribe(subscription, "b")
+		assert.Nil(t, err)
 	})
 }
 
+// TODO Instead of checking msg content there should be a spyOn the send method
 func TestNewMessage(t *testing.T) {
 	t.Run("Should message one user with multiple notifiers", func(t *testing.T) {
-		email, err := notifier.NewNotifier(protocol.Email)
-		assert.Nil(t, err)
-		sms, err := notifier.NewNotifier(protocol.SMS)
-		assert.Nil(t, err)
-		board := NewBoard("test", "")
-		subscription := protocol.Subscription{
-			Subscriber: "1",
-			Services:   []protocol.Notifier{email, sms},
-		}
-		err = board.Subscribe(subscription, "")
+		board := "test"
+		s, err := NewService(memory.NewBd(), protocol.Email, protocol.SMS)
+		assert.NotNil(t, s)
 		assert.Nil(t, err)
 
-		msg := test.BoardGetMessage(board)
-		assert.Contains(t, msg, "Email: Board test, User 1")
-		assert.Contains(t, msg, "SMS: Board test, User 1")
+		s.repo.AddPublicBoard(board)
+		subscription := protocol.Subscription{
+			Subscriber: protocol.Subscribing{
+				User:     "1",
+				Services: []protocol.NotifyService{protocol.Email, protocol.SMS},
+			},
+			Publisher: board,
+		}
+
+		err = s.Subscribe(subscription, "")
+		assert.Nil(t, err)
+
+		msg := test.SendMessageAux(func() {
+			s.NewMessage(board, "test")
+		})
+		assert.Contains(t, msg, "User: 1 Email: test")
+		assert.Contains(t, msg, "User: 1 SMS: test")
 	})
 
 	t.Run("Should message two users", func(t *testing.T) {
-		email, err := notifier.NewNotifier(protocol.Email)
-		assert.Nil(t, err)
-		board := NewBoard("test", "")
-		subscription1 := protocol.Subscription{
-			Subscriber: "1",
-			Services:   []protocol.Notifier{email},
-		}
-		subscription2 := protocol.Subscription{
-			Subscriber: "2",
-			Services:   []protocol.Notifier{email},
-		}
-		err = board.Subscribe(subscription1, "")
-		assert.Nil(t, err)
-		err = board.Subscribe(subscription2, "")
+		board := "test"
+		s, err := NewService(memory.NewBd(), protocol.Email, protocol.SMS)
+		assert.NotNil(t, s)
 		assert.Nil(t, err)
 
-		msg := test.BoardGetMessage(board)
-		assert.Contains(t, msg, "Email: Board test, User 1")
-		assert.Contains(t, msg, "Email: Board test, User 2")
+		s.repo.AddPublicBoard(board)
+		subscription := protocol.Subscription{
+			Subscriber: protocol.Subscribing{
+				User:     "1",
+				Services: []protocol.NotifyService{protocol.Email},
+			},
+			Publisher: board,
+		}
+		err = s.Subscribe(subscription, "")
+		assert.Nil(t, err)
+
+		subscription = protocol.Subscription{
+			Subscriber: protocol.Subscribing{
+				User:     "2",
+				Services: []protocol.NotifyService{protocol.Email},
+			},
+			Publisher: board,
+		}
+		err = s.Subscribe(subscription, "")
+		assert.Nil(t, err)
+
+		msg := test.SendMessageAux(func() {
+			s.NewMessage(board, "test")
+		})
+		assert.Contains(t, msg, "User: 1 Email: test")
+		assert.Contains(t, msg, "User: 2 Email: test")
 	})
 }

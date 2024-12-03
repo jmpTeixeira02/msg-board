@@ -32,18 +32,18 @@ func NewNotifier(service protocol.NotifyService) (protocol.Notifier, error) {
 
 type EmailNotifier struct{}
 
-func (n *EmailNotifier) Send(msg string) {
-	fmt.Printf("Email: %s\n", msg)
+func (n *EmailNotifier) Send(user string, msg string) {
+	fmt.Printf("User: %s Email: %s\n", user, msg)
 }
 
 type WhatsAppNotifier struct{}
 
-func (n *WhatsAppNotifier) Send(msg string) {
-	fmt.Printf("WhatsApp: %s\n", msg)
+func (n *WhatsAppNotifier) Send(user string, msg string) {
+	fmt.Printf("User: %s WhatsApp: %s\n", user, msg)
 }
 
 type SMSNotifier struct{}
 
-func (n *SMSNotifier) Send(msg string) {
-	fmt.Printf("SMS: %s\n", msg)
+func (n *SMSNotifier) Send(user string, msg string) {
+	fmt.Printf("User: %s SMS: %s\n", user, msg)
 }
