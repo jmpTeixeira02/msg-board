@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"msg-board/daemon"
 	"msg-board/protocol"
 	"msg-board/repository"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -30,7 +33,13 @@ func run() error {
 		return err
 	}
 
-	// TODO Gracefully Shutdown
-	server.Start()
-	return nil
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go server.Start()
+
+	// Gracefully Shutdown
+	<-ctx.Done()
+	fmt.Println("Shutting down the server")
+	return server.Shutdown(ctx)
 }

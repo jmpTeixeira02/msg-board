@@ -4,6 +4,7 @@ import (
 	"errors"
 	"msg-board/protocol"
 	"msg-board/service/notifier"
+	"strings"
 )
 
 type BoardService struct {
@@ -26,12 +27,19 @@ func NewService(repo protocol.Repo, notifierServices ...protocol.NotifyService) 
 	}, nil
 }
 
-func (s *BoardService) Subscribe(subscription protocol.Subscription, pw string) error {
+func (s *BoardService) NewBoard(name string, pw *string) protocol.Board {
+	if pw == nil || len(strings.TrimSpace(*pw)) == 0 {
+		return s.repo.AddPublicBoard(name)
+	}
+	return s.repo.AddPrivateBoard(name, *pw)
+}
+
+func (s *BoardService) Subscribe(subscription protocol.Subscription, pw *string) error {
 	isPrivate, boardPw, err := s.repo.IsPrivateBoard(subscription.Publisher)
 	if err != nil {
 		return err
 	}
-	if isPrivate && pw != boardPw {
+	if isPrivate && pw != nil && *pw != boardPw {
 		return errors.New("invalid password")
 	}
 	if len(subscription.Subscriber.Services) < 1 {
@@ -40,8 +48,8 @@ func (s *BoardService) Subscribe(subscription protocol.Subscription, pw string) 
 	return s.repo.Subscribe(subscription.Publisher, subscription.Subscriber)
 }
 
-func (s *BoardService) Unsubscribe(board string, user string) {
-	s.repo.Unsubscribe(board, user)
+func (s *BoardService) Unsubscribe(board string, user string) protocol.Unsubscribe {
+	return s.repo.Unsubscribe(board, user)
 }
 
 func (s *BoardService) NewMessage(board string, msg string) {

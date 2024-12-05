@@ -6,6 +6,12 @@ paths:
   /board:
     post:
         description: Create board
+        operationId: CreateBoard 
+        requestBody:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewBoard"
         responses:
           '200':
             description: Ok
@@ -22,6 +28,12 @@ paths:
           required: true
     post:
         description: Send message to board
+        operationId: SendMessage
+        requestBody:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
         responses:
           '200':
             description: Ok
@@ -38,6 +50,12 @@ paths:
         required: true
     post:
       description: Subscribe to board
+      operationId: SubscribeBoard
+      requestBody:
+          content:
+            application/json:
+              schema:
+               $ref: '#/components/schemas/Subscribe'
       responses:
         '200':
           description: Ok
@@ -45,26 +63,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Subscription'
-    delete:
-      description: Unsubscribe to board
-      responses:
-        '200':
-          description: Ok
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
+  /subscription/{board}/{user}:
+      delete:
+        description: Unsubscribe to board
+        operationId: UnsubscribeBoard
+        parameters:
+        - in: path
+          name: board
+          schema:
+            type: string
+          required: true
+        - in: path
+          name: user
+          schema:
+            type: string
+          required: true
+        responses:
+          '200':
+            description: Ok
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Subscription'
 components:
   schemas:
+    Subscribe:
+      type: object
+      required:
+        - notifiers
+        - user
+      properties:
+        notifiers:
+          type: array
+          items: 
+            type: string
+        user:
+          type: string
+        password:
+          type: string
     Subscription:
       type: object
       required:
-        - board
+        - notifiers
         - user
+        - board
       properties:
-        board:
-          type: string
+        notifiers:
+          type: array
+          items: 
+            type: string
         user:
+          type: string
+        password:
+          type: string
+        board:
           type: string
     Message:
       type: object
@@ -73,10 +125,32 @@ components:
       properties:
         msg:
           type: string
-    Board:
+    NewBoard:
       type: object
       required:
         - board
       properties:
         board:
+          type: string
+        password:
+          type: string
+    Board:
+      type: object
+      required:
+        - board
+        - password
+        - private
+      properties:
+        board:
+          type: string
+        password:
+          type: string
+        private:
+          type: boolean
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
           type: string

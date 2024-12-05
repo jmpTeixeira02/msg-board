@@ -9,40 +9,51 @@ type messageBoard struct {
 	Subscriptions map[string][]protocol.NotifyService // userId -> []notifiers
 	Private       bool
 	Password      string
+	Name          string
 }
 
 type DB struct {
 	boards map[string]messageBoard
 }
 
+// TODO
+// This BD is not concurrent safe
+// It's possible to override Subscriptions when adding
 func NewBd() protocol.Repo {
 	return &DB{
 		boards: map[string]messageBoard{},
 	}
 }
 
-func (db *DB) AddPublicBoard(id string) {
-	db.boards[id] = messageBoard{
+func (db *DB) AddPublicBoard(id string) protocol.Board {
+	res := messageBoard{
 		Subscriptions: map[string][]protocol.NotifyService{},
 		Private:       false,
 		Password:      "",
+		Name:          id,
 	}
+
+	db.boards[id] = res
+	return BoardDAOToBoard(res)
 }
 
-func (db *DB) AddPrivateBoard(id string, pw string) {
-	db.boards[id] = messageBoard{
+func (db *DB) AddPrivateBoard(id string, pw string) protocol.Board {
+	res := messageBoard{
 		Subscriptions: map[string][]protocol.NotifyService{},
 		Private:       true,
 		Password:      pw,
+		Name:          id,
 	}
+	db.boards[id] = res
+	return BoardDAOToBoard(res)
 }
 
 func (db *DB) IsPrivateBoard(board string) (bool, string, error) {
-	_, ok := db.boards[board]
+	b, ok := db.boards[board]
 	if !ok {
 		return false, "", errors.New("board does not exist")
 	}
-	return db.boards[board].Private, db.boards[board].Password, nil
+	return b.Private, b.Password, nil
 }
 
 func (db *DB) Subscribe(board string, subscriber protocol.Subscribing) error {
@@ -54,8 +65,14 @@ func (db *DB) Subscribe(board string, subscriber protocol.Subscribing) error {
 	return nil
 }
 
-func (db *DB) Unsubscribe(board string, user string) {
+func (db *DB) Unsubscribe(board string, user string) protocol.Unsubscribe {
+	services := db.boards[board].Subscriptions[user]
 	delete(db.boards[board].Subscriptions, user)
+	return protocol.Unsubscribe{
+		Board:     board,
+		User:      user,
+		Notifiers: services,
+	}
 }
 
 func (db *DB) GetSubscribers(board string) []protocol.Subscribing {

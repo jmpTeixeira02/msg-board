@@ -4,6 +4,7 @@ import (
 	"msg-board/protocol"
 	"msg-board/repository"
 	"msg-board/service/board"
+	"msg-board/util"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,16 +26,16 @@ func TestE2E(t *testing.T) {
 				Services: []protocol.NotifyService{protocol.WhatsApp},
 			},
 			Publisher: board,
-		}, "")
+		}, nil)
 		assert.Nil(t, err)
 
-		msg := SendMessageAux(func() {
+		msg := util.CaptureStdOutput(func() {
 			s.NewMessage(board, "test")
 		})
 		assert.Contains(t, msg, "User: 1 WhatsApp: public")
 
 		s.Unsubscribe(board, "1")
-		msg = SendMessageAux(func() {
+		msg = util.CaptureStdOutput(func() {
 			s.NewMessage(board, "test")
 		})
 		assert.NotContains(t, msg, "WhatsApp: Board public, User 1 test")
@@ -55,7 +56,7 @@ func TestE2E(t *testing.T) {
 				Services: []protocol.NotifyService{protocol.Email, protocol.SMS},
 			},
 			Publisher: board,
-		}, "")
+		}, nil)
 		assert.Nil(t, err)
 
 		err = s.Subscribe(protocol.Subscription{
@@ -64,10 +65,10 @@ func TestE2E(t *testing.T) {
 				Services: []protocol.NotifyService{protocol.WhatsApp},
 			},
 			Publisher: board,
-		}, "")
+		}, nil)
 		assert.Nil(t, err)
 
-		msg := SendMessageAux(func() {
+		msg := util.CaptureStdOutput(func() {
 			s.NewMessage(board, "test")
 		})
 		assert.Contains(t, msg, "User: 1 Email: public")
@@ -93,7 +94,7 @@ func TestE2E(t *testing.T) {
 				Services: []protocol.NotifyService{protocol.Email},
 			},
 			Publisher: public,
-		}, "")
+		}, nil)
 		assert.Nil(t, err)
 
 		err = s.Subscribe(protocol.Subscription{
@@ -102,16 +103,16 @@ func TestE2E(t *testing.T) {
 				Services: []protocol.NotifyService{protocol.WhatsApp},
 			},
 			Publisher: private,
-		}, pw)
+		}, &pw)
 		assert.Nil(t, err)
 
-		msg := SendMessageAux(func() {
+		msg := util.CaptureStdOutput(func() {
 			s.NewMessage(public, "test")
 		})
 		assert.Contains(t, msg, "User: 1 Email: public")
 		assert.NotContains(t, msg, "User: 1 WhatsApp: private")
 
-		msg = SendMessageAux(func() {
+		msg = util.CaptureStdOutput(func() {
 			s.NewMessage(private, "test")
 		})
 		assert.NotContains(t, msg, "User: 1 Email: public")

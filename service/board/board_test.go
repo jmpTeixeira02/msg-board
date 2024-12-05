@@ -3,11 +3,19 @@ package board
 import (
 	"msg-board/protocol"
 	"msg-board/repository/memory"
-	"msg-board/test"
+	"msg-board/util"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func initTest() BoardService {
+	s, err := NewService(memory.NewBd(), protocol.Email, protocol.SMS, protocol.WhatsApp)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
 
 func TestNewService(t *testing.T) {
 	t.Run("Should create new service", func(t *testing.T) {
@@ -17,19 +25,39 @@ func TestNewService(t *testing.T) {
 	})
 }
 
+func TestNewBoard(t *testing.T) {
+	t.Run("Should create private board", func(t *testing.T) {
+		s := initTest()
+
+		boardNae := "board"
+		pw := "a"
+		board := s.NewBoard(boardNae, &pw)
+		assert.True(t, board.Private)
+		assert.Equal(t, "a", board.Password)
+		assert.Len(t, board.Subscriptions, 0)
+	})
+
+	t.Run("Should create public board", func(t *testing.T) {
+		s := initTest()
+
+		boardName := "board"
+		pw := ""
+		board := s.NewBoard(boardName, &pw)
+		assert.False(t, board.Private)
+		assert.Equal(t, "", board.Password)
+		assert.Len(t, board.Subscriptions, 0)
+	})
+}
+
 func TestSubscribe(t *testing.T) {
 	t.Run("Should error on subscribe without notifier", func(t *testing.T) {
 		userId := ""
 		board := ""
 
-		s, err := NewService(memory.NewBd(), protocol.Email)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
+		s := initTest()
 
-		s.repo.AddPublicBoard(board)
-
-		assert.Nil(t, err)
-
+		pw := ""
+		s.NewBoard(board, &pw)
 		subscription := protocol.Subscription{
 			Subscriber: protocol.Subscribing{
 				User:     userId,
@@ -38,7 +66,7 @@ func TestSubscribe(t *testing.T) {
 			Publisher: board,
 		}
 
-		err = s.Subscribe(subscription, "")
+		err := s.Subscribe(subscription, &pw)
 		assert.Error(t, err)
 	})
 
@@ -46,13 +74,10 @@ func TestSubscribe(t *testing.T) {
 		userId := ""
 		board := ""
 
-		s, err := NewService(memory.NewBd(), protocol.Email)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
+		s := initTest()
 
-		s.repo.AddPrivateBoard(board, "a")
-
-		assert.Nil(t, err)
+		pw := "a"
+		s.NewBoard(board, &pw)
 
 		subscription := protocol.Subscription{
 			Subscriber: protocol.Subscribing{
@@ -62,7 +87,8 @@ func TestSubscribe(t *testing.T) {
 			Publisher: board,
 		}
 
-		err = s.Subscribe(subscription, "b")
+		pwB := "b"
+		err := s.Subscribe(subscription, &pwB)
 		assert.NotNil(t, err)
 	})
 
@@ -70,13 +96,10 @@ func TestSubscribe(t *testing.T) {
 		userId := ""
 		board := ""
 
-		s, err := NewService(memory.NewBd(), protocol.Email)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
+		s := initTest()
 
-		s.repo.AddPrivateBoard(board, "b")
-
-		assert.Nil(t, err)
+		pw := "b"
+		s.NewBoard(board, &pw)
 
 		subscription := protocol.Subscription{
 			Subscriber: protocol.Subscribing{
@@ -86,7 +109,7 @@ func TestSubscribe(t *testing.T) {
 			Publisher: board,
 		}
 
-		err = s.Subscribe(subscription, "b")
+		err := s.Subscribe(subscription, &pw)
 		assert.Nil(t, err)
 	})
 
@@ -94,14 +117,10 @@ func TestSubscribe(t *testing.T) {
 		userId := ""
 		board := ""
 
-		s, err := NewService(memory.NewBd(), protocol.Email)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
+		s := initTest()
 
-		s.repo.AddPublicBoard(board)
-
-		assert.Nil(t, err)
-
+		pw := ""
+		s.NewBoard(board, &pw)
 		subscription := protocol.Subscription{
 			Subscriber: protocol.Subscribing{
 				User:     userId,
@@ -110,7 +129,7 @@ func TestSubscribe(t *testing.T) {
 			Publisher: board,
 		}
 
-		err = s.Subscribe(subscription, "b")
+		err := s.Subscribe(subscription, nil)
 		assert.Nil(t, err)
 	})
 }
@@ -119,11 +138,10 @@ func TestSubscribe(t *testing.T) {
 func TestNewMessage(t *testing.T) {
 	t.Run("Should message one user with multiple notifiers", func(t *testing.T) {
 		board := "test"
-		s, err := NewService(memory.NewBd(), protocol.Email, protocol.SMS)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
+		s := initTest()
 
-		s.repo.AddPublicBoard(board)
+		pw := ""
+		s.NewBoard(board, &pw)
 		subscription := protocol.Subscription{
 			Subscriber: protocol.Subscribing{
 				User:     "1",
@@ -132,10 +150,10 @@ func TestNewMessage(t *testing.T) {
 			Publisher: board,
 		}
 
-		err = s.Subscribe(subscription, "")
+		err := s.Subscribe(subscription, nil)
 		assert.Nil(t, err)
 
-		msg := test.SendMessageAux(func() {
+		msg := util.CaptureStdOutput(func() {
 			s.NewMessage(board, "test")
 		})
 		assert.Contains(t, msg, "User: 1 Email: test")
@@ -144,11 +162,10 @@ func TestNewMessage(t *testing.T) {
 
 	t.Run("Should message two users", func(t *testing.T) {
 		board := "test"
-		s, err := NewService(memory.NewBd(), protocol.Email, protocol.SMS)
-		assert.NotNil(t, s)
-		assert.Nil(t, err)
+		s := initTest()
 
-		s.repo.AddPublicBoard(board)
+		pw := ""
+		s.NewBoard(board, &pw)
 		subscription := protocol.Subscription{
 			Subscriber: protocol.Subscribing{
 				User:     "1",
@@ -156,7 +173,7 @@ func TestNewMessage(t *testing.T) {
 			},
 			Publisher: board,
 		}
-		err = s.Subscribe(subscription, "")
+		err := s.Subscribe(subscription, nil)
 		assert.Nil(t, err)
 
 		subscription = protocol.Subscription{
@@ -166,10 +183,10 @@ func TestNewMessage(t *testing.T) {
 			},
 			Publisher: board,
 		}
-		err = s.Subscribe(subscription, "")
+		err = s.Subscribe(subscription, nil)
 		assert.Nil(t, err)
 
-		msg := test.SendMessageAux(func() {
+		msg := util.CaptureStdOutput(func() {
 			s.NewMessage(board, "test")
 		})
 		assert.Contains(t, msg, "User: 1 Email: test")

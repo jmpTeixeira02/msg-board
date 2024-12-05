@@ -14,7 +14,9 @@ import (
 
 // Board defines model for Board.
 type Board struct {
-	Board string `json:"board"`
+	Board    string `json:"board"`
+	Password string `json:"password"`
+	Private  *bool  `json:"private,omitempty"`
 }
 
 // Message defines model for Message.
@@ -22,25 +24,50 @@ type Message struct {
 	Msg string `json:"msg"`
 }
 
+// NewBoard defines model for NewBoard.
+type NewBoard struct {
+	Board    string  `json:"board"`
+	Password *string `json:"password,omitempty"`
+}
+
+// Subscribe defines model for Subscribe.
+type Subscribe struct {
+	Notifiers []string `json:"notifiers"`
+	Password  *string  `json:"password,omitempty"`
+	User      string   `json:"user"`
+}
+
 // Subscription defines model for Subscription.
 type Subscription struct {
-	Board string `json:"board"`
-	User  string `json:"user"`
+	Board     string   `json:"board"`
+	Notifiers []string `json:"notifiers"`
+	Password  *string  `json:"password,omitempty"`
+	User      string   `json:"user"`
 }
+
+// CreateBoardJSONRequestBody defines body for CreateBoard for application/json ContentType.
+type CreateBoardJSONRequestBody = NewBoard
+
+// SendMessageJSONRequestBody defines body for SendMessage for application/json ContentType.
+type SendMessageJSONRequestBody = Message
+
+// SubscribeBoardJSONRequestBody defines body for SubscribeBoard for application/json ContentType.
+type SubscribeBoardJSONRequestBody = Subscribe
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
 	// (POST /board)
-	PostBoard(w http.ResponseWriter, r *http.Request)
+	CreateBoard(w http.ResponseWriter, r *http.Request)
 
 	// (POST /board/{board})
-	PostBoardBoard(w http.ResponseWriter, r *http.Request, board string)
-
-	// (DELETE /subscription/{board})
-	DeleteSubscriptionBoard(w http.ResponseWriter, r *http.Request, board string)
+	SendMessage(w http.ResponseWriter, r *http.Request, board string)
 
 	// (POST /subscription/{board})
-	PostSubscriptionBoard(w http.ResponseWriter, r *http.Request, board string)
+	SubscribeBoard(w http.ResponseWriter, r *http.Request, board string)
+
+	// (DELETE /subscription/{board}/{user})
+	UnsubscribeBoard(w http.ResponseWriter, r *http.Request, board string, user string)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -52,10 +79,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostBoard operation middleware
-func (siw *ServerInterfaceWrapper) PostBoard(w http.ResponseWriter, r *http.Request) {
+// CreateBoard operation middleware
+func (siw *ServerInterfaceWrapper) CreateBoard(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostBoard(w, r)
+		siw.Handler.CreateBoard(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -65,8 +93,9 @@ func (siw *ServerInterfaceWrapper) PostBoard(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
-// PostBoardBoard operation middleware
-func (siw *ServerInterfaceWrapper) PostBoardBoard(w http.ResponseWriter, r *http.Request) {
+// SendMessage operation middleware
+func (siw *ServerInterfaceWrapper) SendMessage(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "board" -------------
@@ -79,7 +108,7 @@ func (siw *ServerInterfaceWrapper) PostBoardBoard(w http.ResponseWriter, r *http
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostBoardBoard(w, r, board)
+		siw.Handler.SendMessage(w, r, board)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -89,8 +118,9 @@ func (siw *ServerInterfaceWrapper) PostBoardBoard(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// DeleteSubscriptionBoard operation middleware
-func (siw *ServerInterfaceWrapper) DeleteSubscriptionBoard(w http.ResponseWriter, r *http.Request) {
+// SubscribeBoard operation middleware
+func (siw *ServerInterfaceWrapper) SubscribeBoard(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "board" -------------
@@ -103,7 +133,7 @@ func (siw *ServerInterfaceWrapper) DeleteSubscriptionBoard(w http.ResponseWriter
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteSubscriptionBoard(w, r, board)
+		siw.Handler.SubscribeBoard(w, r, board)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -113,8 +143,9 @@ func (siw *ServerInterfaceWrapper) DeleteSubscriptionBoard(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
-// PostSubscriptionBoard operation middleware
-func (siw *ServerInterfaceWrapper) PostSubscriptionBoard(w http.ResponseWriter, r *http.Request) {
+// UnsubscribeBoard operation middleware
+func (siw *ServerInterfaceWrapper) UnsubscribeBoard(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "board" -------------
@@ -126,8 +157,17 @@ func (siw *ServerInterfaceWrapper) PostSubscriptionBoard(w http.ResponseWriter, 
 		return
 	}
 
+	// ------------- Path parameter "user" -------------
+	var user string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user", r.PathValue("user"), &user, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "user", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostSubscriptionBoard(w, r, board)
+		siw.Handler.UnsubscribeBoard(w, r, board, user)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -257,10 +297,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc("POST "+options.BaseURL+"/board", wrapper.PostBoard)
-	m.HandleFunc("POST "+options.BaseURL+"/board/{board}", wrapper.PostBoardBoard)
-	m.HandleFunc("DELETE "+options.BaseURL+"/subscription/{board}", wrapper.DeleteSubscriptionBoard)
-	m.HandleFunc("POST "+options.BaseURL+"/subscription/{board}", wrapper.PostSubscriptionBoard)
+	m.HandleFunc("POST "+options.BaseURL+"/board", wrapper.CreateBoard)
+	m.HandleFunc("POST "+options.BaseURL+"/board/{board}", wrapper.SendMessage)
+	m.HandleFunc("POST "+options.BaseURL+"/subscription/{board}", wrapper.SubscribeBoard)
+	m.HandleFunc("DELETE "+options.BaseURL+"/subscription/{board}/{user}", wrapper.UnsubscribeBoard)
 
 	return m
 }

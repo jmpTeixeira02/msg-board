@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"log"
 	api "msg-board/daemon/api/generated"
 	"msg-board/protocol"
@@ -15,9 +16,11 @@ type Config struct {
 }
 
 type Server struct {
-	Addr    string
-	Log     *log.Logger
-	Service board.BoardService
+	Addr     string
+	Log      *log.Logger
+	Service  board.BoardService
+	Repo     protocol.Repo
+	Shutdown func(context.Context) error
 }
 
 func NewServer(config Config, log *log.Logger) (Server, error) {
@@ -29,6 +32,7 @@ func NewServer(config Config, log *log.Logger) (Server, error) {
 		Addr:    config.Addr,
 		Log:     log,
 		Service: service,
+		Repo:    config.Repository,
 	}, nil
 }
 
@@ -43,10 +47,7 @@ func (s *Server) Start() {
 	}
 
 	s.Log.Printf("Listening on %s\n", s.Addr)
-	s.Log.Fatal(server.ListenAndServe())
-}
+	s.Shutdown = server.Shutdown
 
-// TOOD Close http server and repository connections
-func (s *Server) Close() {
-	panic("TODO")
+	s.Log.Fatal(server.ListenAndServe())
 }
